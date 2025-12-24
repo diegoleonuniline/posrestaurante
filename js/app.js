@@ -35,19 +35,6 @@ let cantidadExtra = 1;
 
 let cambiosPendientes = { editados: [], cancelados: [], nuevos: [] };
 
-// Generar folio único
-function generarFolioUnico() {
-    const now = new Date();
-    const año = String(now.getFullYear()).slice(-2);
-    const mes = String(now.getMonth() + 1).padStart(2, '0');
-    const dia = String(now.getDate()).padStart(2, '0');
-    const hora = String(now.getHours()).padStart(2, '0');
-    const min = String(now.getMinutes()).padStart(2, '0');
-    const seg = String(now.getSeconds()).padStart(2, '0');
-    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-    
-    return `PED${año}${mes}${dia}${hora}${min}${seg}${random}`;
-}
 // ================================
 // CACHE LOCAL
 // ================================
@@ -478,7 +465,6 @@ function agregarAlTicket(producto, cantidad, extras, notas, extrasTotal) {
     const cantidadNum = parseInt(cantidad) || 1;
     const subtotal = (precioNum + extrasTotalNum) * cantidadNum;
     
-    // Guardar extras con ID y nombre para mostrar y enviar
     const extrasConId = (extras || []).map(e => ({
         id: e.id,
         nombre: e.nombre,
@@ -737,7 +723,7 @@ function cancelarTicket() {
     const mensaje = cuentaActual ? "Se cancelará la cuenta completa" : "Los productos se perderán";
     
     abrirModalConfirmar("¿Cancelar ticket?", mensaje, async () => {
-        if (cuentaActual && cuentaActual.folio && !cuentaActual.folio.startsWith("NUEVA-")) {
+        if (cuentaActual && cuentaActual.folio && !cuentaActual.folio.startsWith("NUEVA-") && !cuentaActual.folio.startsWith("TEMP-")) {
             const folioACancelar = cuentaActual.folio;
             const mesaIdACancelar = cuentaActual.mesaId;
             
@@ -881,11 +867,9 @@ async function seleccionarMesa(mesaId) {
     mesaSeleccionada = mesa;
     
     if (mesa.estado === "Ocupada" && mesa.folio) {
-        // Verificar si la cuenta está cerrada
         const cuenta = mesa.cuenta || cuentasCompletas[mesa.folio];
         
         if (cuenta && cuenta.estado === "Cerrado") {
-            // Mostrar modal de cuenta cerrada para pedir PIN
             mostrarModalCuenta(cuenta);
             return;
         }
@@ -993,18 +977,17 @@ async function cargarCuentaConFallback(folio, mesa) {
 }
 
 async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
-    // NO generar folio aquí, esperar respuesta del backend
     mostrarInterfazMesa(mesa);
     document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - Abriendo...";
+    ticket = [];
     renderTicket();
     cambiarTab("productos", document.querySelector('[data-tab="productos"]'));
     mostrarToast("Abriendo mesa " + mesa.numero + "...", "");
     
     try {
-        const result = await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "", "");
+        const result = await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "");
         
         if (result && result.folio) {
-            // USAR EL FOLIO QUE DEVOLVIÓ EL BACKEND
             cuentaActual = {
                 folio: result.folio,
                 mesaId: mesa.id,
@@ -1015,14 +998,17 @@ async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
             };
             
             if (meseroId) meseroActual = { id: meseroId, nombre: meseroNombre };
-            ticket = [];
             
             document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - " + result.folio;
-            mostrarToast("Mesa " + mesa.numero + " abierta: " + result.folio, "success");
+            mostrarToast("✓ Mesa " + mesa.numero + " abierta", "success");
+        } else {
+            mostrarToast("Error al abrir mesa", "error");
+            resetearInterfazMesa();
         }
     } catch(e) {
         console.error("Error al abrir cuenta:", e);
         mostrarToast("Error al abrir mesa", "error");
+        resetearInterfazMesa();
     }
 }
 
@@ -1058,7 +1044,7 @@ function resetearInterfazMesa() {
     
     document.getElementById("ticketMesaInfo").style.display = "none";
     document.getElementById("ticketTipoContainer").style.display = "flex";
-document.getElementById("btnCerrarTicket").style.display = "none";
+    document.getElementById("btnCerrarTicket").style.display = "none";
     document.querySelector(".ticket-actions").classList.remove("con-mesa");
     document.getElementById("ticketTitulo").textContent = "Ticket de Venta";
     
@@ -1115,7 +1101,6 @@ async function guardarCuenta() {
         return;
     }
     
-    // Si es domicilio sin cuenta abierta, crear una nueva
     if (!cuentaActual && tipoServicio === "Domicilio") {
         await guardarPedidoDomicilio();
         return;
@@ -1123,6 +1108,11 @@ async function guardarCuenta() {
     
     if (!cuentaActual) {
         mostrarToast("Sin cuenta activa", "");
+        return;
+    }
+    
+    if (cuentaActual.folio.startsWith("TEMP-")) {
+        mostrarToast("Espera a que se abra la cuenta", "");
         return;
     }
     
@@ -1314,7 +1304,6 @@ function mostrarModalCuenta(cuenta) {
     document.getElementById("cuentaHoraModal").textContent = (cuenta.hora || "").substring(0, 5) || "--:--";
     document.getElementById("cuentaClienteModal").textContent = cuenta.cliente || "Mostrador";
     
-    // Mostrar estado
     const estadoInfo = document.getElementById("cuentaEstadoInfo");
     if (estaCerrada) {
         estadoInfo.textContent = "🔒 Cuenta Cerrada - Solo cobrar";
@@ -1326,7 +1315,6 @@ function mostrarModalCuenta(cuenta) {
         estadoInfo.style.display = "block";
     }
     
-    // Mostrar/ocultar botones según estado
     const btnAgregar = document.getElementById("btnAgregarMas");
     const btnCerrar = document.getElementById("btnCerrarCuenta");
     const btnReabrir = document.getElementById("btnReabrirCuenta");
@@ -1476,7 +1464,7 @@ function filtrarClientesLocal() {
     clientesBuscados = termino === "" 
         ? todosLosClientes.slice() 
         : todosLosClientes.filter(c => {
-const nombre = (c.nombre || "").toLowerCase();
+            const nombre = (c.nombre || "").toLowerCase();
             const telefono = (c.telefono || "").toLowerCase();
             const correo = (c.correo || "").toLowerCase();
             return nombre.includes(termino) || telefono.includes(termino) || correo.includes(termino);
@@ -1865,15 +1853,13 @@ async function confirmarVenta() {
     const totalPagado = pagosActuales.reduce((s, p) => s + p.monto, 0);
     const cambio = Math.max(0, totalPagado - totalConPropina);
     
-    // Si es cuenta de mesa, guardar productos pendientes primero y luego cerrar
-    if (cuentaActual && cuentaActual.folio) {
+    if (cuentaActual && cuentaActual.folio && !cuentaActual.folio.startsWith("TEMP-")) {
         const folioVenta = cuentaActual.folio;
         const mesaIdVenta = cuentaActual.mesaId;
         
         cerrarCobro();
         mostrarExito(folioVenta, totalConPropina, cambio, pagosEnviar);
         
-        // Guardar productos pendientes primero
         const nuevos = ticket.filter(item => item.esNuevo && item.pendienteSync);
         if (nuevos.length > 0) {
             const productosEnviar = nuevos.map(item => {
@@ -1897,7 +1883,6 @@ async function confirmarVenta() {
             }
         }
         
-        // Actualizar UI
         delete cuentasCompletas[folioVenta];
         mesas.forEach(m => {
             if (m.id === mesaIdVenta) {
@@ -1922,9 +1907,6 @@ async function confirmarVenta() {
             mostrarToast("Error al cerrar cuenta", "error");
         }
     } else {
-        // Venta rápida sin mesa
-        const folioLocal = generarFolioUnico();
-        
         const productosEnviar = ticket.map(item => {
             const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
             return {
@@ -1940,7 +1922,7 @@ async function confirmarVenta() {
         });
         
         cerrarCobro();
-        mostrarExito(folioLocal, totalConPropina, cambio, pagosEnviar);
+        mostrarExito("", totalConPropina, cambio, pagosEnviar);
         
         try {
             const result = await registrarVentaPOS({
@@ -2033,6 +2015,7 @@ document.addEventListener("keydown", e => {
         });
     }
 });
+
 // ================================
 // CERRAR Y REABRIR CUENTAS
 // ================================
@@ -2090,10 +2073,8 @@ async function confirmarReabrir() {
             cerrarModalCuenta();
             mostrarToast("✓ Cuenta reabierta por " + result.usuario, "success");
             
-            // Actualizar estado local y abrir directo para agregar
             cuentaModalActual.estado = "Abierto";
             
-            // Ir directo a agregar productos
             let mesa = null;
             if (cuentaModalActual.mesaId) {
                 mesa = mesas.find(m => m.id === cuentaModalActual.mesaId);
@@ -2111,15 +2092,15 @@ async function confirmarReabrir() {
         document.getElementById("pinError").style.display = "block";
     }
 }
+
 async function cerrarCuentaDesdeTicket() {
-    if (!cuentaActual || !cuentaActual.folio || cuentaActual.folio.startsWith("NUEVA-")) {
+    if (!cuentaActual || !cuentaActual.folio || cuentaActual.folio.startsWith("NUEVA-") || cuentaActual.folio.startsWith("TEMP-")) {
         mostrarToast("Primero guarda la cuenta", "error");
         return;
     }
     
     abrirModalConfirmar("¿Cerrar cuenta?", "La cuenta quedará cerrada sin cobrar", async () => {
         try {
-            // Guardar cambios pendientes primero
             const nuevos = ticket.filter(item => item.esNuevo && item.pendienteSync);
             if (nuevos.length > 0) {
                 const productosEnviar = nuevos.map(item => {
@@ -2138,7 +2119,6 @@ async function cerrarCuentaDesdeTicket() {
                 await agregarProductosCuentaBatch(cuentaActual.folio, productosEnviar, cuentaActual.meseroId || "", usuarioLogueado?.id || "");
             }
             
-            // Cerrar la cuenta
             const result = await cerrarCuentaSinCobro(cuentaActual.folio);
             if (result.success) {
                 mostrarToast("✓ Cuenta cerrada", "success");
