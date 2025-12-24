@@ -1005,6 +1005,7 @@ function mostrarInterfazMesa(mesa) {
     document.getElementById("ticketTipoContainer").style.display = "none";
     tipoServicio = "Local";
     document.getElementById("btnGuardar").style.display = "flex";
+    document.getElementById("btnCerrarTicket").style.display = "flex";
     document.querySelector(".ticket-actions").classList.add("con-mesa");
     document.getElementById("ticketTitulo").textContent = "Mesa " + mesa.numero;
 }
@@ -1030,7 +1031,7 @@ function resetearInterfazMesa() {
     
     document.getElementById("ticketMesaInfo").style.display = "none";
     document.getElementById("ticketTipoContainer").style.display = "flex";
-    document.getElementById("btnGuardar").style.display = "none";
+document.getElementById("btnCerrarTicket").style.display = "none";
     document.querySelector(".ticket-actions").classList.remove("con-mesa");
     document.getElementById("ticketTitulo").textContent = "Ticket de Venta";
     
@@ -2035,6 +2036,18 @@ async function confirmarReabrir() {
             cerrarModalReabrir();
             cerrarModalCuenta();
             mostrarToast("✓ Cuenta reabierta por " + result.usuario, "success");
+            
+            // Actualizar estado local y abrir directo para agregar
+            cuentaModalActual.estado = "Abierto";
+            
+            // Ir directo a agregar productos
+            let mesa = null;
+            if (cuentaModalActual.mesaId) {
+                mesa = mesas.find(m => m.id === cuentaModalActual.mesaId);
+            }
+            
+            aplicarCuentaInstantanea(cuentaModalActual, mesa || { id: cuentaModalActual.mesaId, numero: "" });
+            
             cargarDatosCompletos();
         } else {
             document.getElementById("pinError").textContent = result.mensaje;
@@ -2044,4 +2057,46 @@ async function confirmarReabrir() {
         document.getElementById("pinError").textContent = "Error: " + e.message;
         document.getElementById("pinError").style.display = "block";
     }
+}
+async function cerrarCuentaDesdeTicket() {
+    if (!cuentaActual || !cuentaActual.folio || cuentaActual.folio.startsWith("NUEVA-")) {
+        mostrarToast("Primero guarda la cuenta", "error");
+        return;
+    }
+    
+    abrirModalConfirmar("¿Cerrar cuenta?", "La cuenta quedará cerrada sin cobrar", async () => {
+        try {
+            // Guardar cambios pendientes primero
+            const nuevos = ticket.filter(item => item.esNuevo && item.pendienteSync);
+            if (nuevos.length > 0) {
+                const productosEnviar = nuevos.map(item => {
+                    const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
+                    return {
+                        productoId: item.productoId,
+                        nombre: item.nombre,
+                        cantidad: item.cantidad,
+                        precio: item.precio,
+                        extrasIds: extrasIds,
+                        extrasTotal: item.extrasTotal,
+                        subtotal: item.subtotal,
+                        notas: item.notas || ""
+                    };
+                });
+                await agregarProductosCuentaBatch(cuentaActual.folio, productosEnviar, cuentaActual.meseroId || "", usuarioLogueado?.id || "");
+            }
+            
+            // Cerrar la cuenta
+            const result = await cerrarCuentaSinCobro(cuentaActual.folio);
+            if (result.success) {
+                mostrarToast("✓ Cuenta cerrada", "success");
+                resetearInterfazMesa();
+                cambiarTab("mesas", document.querySelector('[data-tab="mesas"]'));
+                cargarDatosCompletos();
+            } else {
+                mostrarToast(result.mensaje || "Error", "error");
+            }
+        } catch(e) {
+            mostrarToast("Error: " + e.message, "error");
+        }
+    });
 }
