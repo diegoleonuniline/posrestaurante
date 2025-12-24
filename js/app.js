@@ -1859,15 +1859,40 @@ async function confirmarVenta() {
     
     const totalPagado = pagosActuales.reduce((s, p) => s + p.monto, 0);
     const cambio = Math.max(0, totalPagado - totalConPropina);
-    const folioLocal = "V" + Date.now().toString().substr(-8);
     
-    cerrarCobro();
-    mostrarExito(folioLocal, totalConPropina, cambio, pagosEnviar);
-    
-    if (cuentaActual && cuentaActual.folio && !cuentaActual.folio.startsWith("NUEVA-")) {
+    // Si es cuenta de mesa, guardar productos pendientes primero y luego cerrar
+    if (cuentaActual && cuentaActual.folio) {
         const folioVenta = cuentaActual.folio;
         const mesaIdVenta = cuentaActual.mesaId;
         
+        cerrarCobro();
+        mostrarExito(folioVenta, totalConPropina, cambio, pagosEnviar);
+        
+        // Guardar productos pendientes primero
+        const nuevos = ticket.filter(item => item.esNuevo && item.pendienteSync);
+        if (nuevos.length > 0) {
+            const productosEnviar = nuevos.map(item => {
+                const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
+                return {
+                    productoId: item.productoId,
+                    nombre: item.nombre,
+                    cantidad: item.cantidad,
+                    precio: item.precio,
+                    extrasIds: extrasIds,
+                    extrasTotal: item.extrasTotal,
+                    subtotal: item.subtotal,
+                    notas: item.notas || ""
+                };
+            });
+            
+            try {
+                await agregarProductosCuentaBatch(folioVenta, productosEnviar, cuentaActual.meseroId || "", usuarioLogueado?.id || "");
+            } catch(e) {
+                console.error("Error guardando productos:", e);
+            }
+        }
+        
+        // Actualizar UI
         delete cuentasCompletas[folioVenta];
         mesas.forEach(m => {
             if (m.id === mesaIdVenta) {
@@ -1892,7 +1917,9 @@ async function confirmarVenta() {
             mostrarToast("Error al cerrar cuenta", "error");
         }
     } else {
-        // Venta rápida - enviar IDs de extras
+        // Venta rápida sin mesa
+        const folioLocal = generarFolioUnico();
+        
         const productosEnviar = ticket.map(item => {
             const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
             return {
@@ -1906,6 +1933,9 @@ async function confirmarVenta() {
                 notas: item.notas || ""
             };
         });
+        
+        cerrarCobro();
+        mostrarExito(folioLocal, totalConPropina, cambio, pagosEnviar);
         
         try {
             const result = await registrarVentaPOS({
@@ -1934,11 +1964,7 @@ async function confirmarVenta() {
             mostrarToast("Error al registrar venta", "error");
         }
         
-        if (cuentaActual) {
-            resetearInterfazMesa();
-        } else {
-            resetearVenta();
-        }
+        resetearVenta();
     }
 }
 
