@@ -48,8 +48,8 @@ function obtenerEstadisticasHoy() {
     return apiGet("/api/estadisticas-hoy");
 }
 
-function abrirCuentaMesa(mesaId, meseroId, usuarioId) {
-    return apiPost("/api/abrir-cuenta", { mesaId, meseroId, usuarioId });
+function abrirCuentaMesa(mesaId, meseroId, usuarioId, folio) {
+    return apiPost("/api/abrir-cuenta", { mesaId, meseroId, usuarioId, folio });
 }
 
 function agregarProductosCuentaBatch(folio, productos, meseroId, usuarioId) {
