@@ -100,7 +100,7 @@ function obtenerHistorialVentas(limite) {
     return apiGet(`/api/historial?limite=${limite || 50}`);
 }
 function registrarPedidoDomicilio(datos) {
-    return apiPost("/api/registrar-pedido-domicilio", datos);
+    return apiPost("/api/registrar-venta", datos);
 }
 function cerrarCuentaSinCobro(folio) {
     return apiPost("/api/cerrar-cuenta-sin-cobro", { folio });
