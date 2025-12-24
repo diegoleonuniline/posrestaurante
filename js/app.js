@@ -465,13 +465,20 @@ function agregarAlTicket(producto, cantidad, extras, notas, extrasTotal) {
     const cantidadNum = parseInt(cantidad) || 1;
     const subtotal = (precioNum + extrasTotalNum) * cantidadNum;
     
+    // Guardar extras con ID y nombre para mostrar y enviar
+    const extrasConId = (extras || []).map(e => ({
+        id: e.id,
+        nombre: e.nombre,
+        precio: e.precio
+    }));
+    
     const nuevoItem = {
         id: "local_" + Date.now() + "_" + Math.random().toString(36).substr(2,5),
         productoId: producto.id,
         nombre: producto.nombre,
         precio: precioNum,
         cantidad: cantidadNum,
-        extras: extras || [],
+        extras: extrasConId,
         extrasTotal: extrasTotalNum,
         subtotal,
         notas: notas || "",
@@ -1082,12 +1089,15 @@ async function guardarCuenta() {
     
     ticket.forEach(item => {
         if (item.esNuevo && item.pendienteSync) {
+            // Enviar IDs de extras separados por coma
+            const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(",");
+            
             nuevos.push({
                 productoId: item.productoId,
                 nombre: item.nombre,
                 cantidad: item.cantidad,
                 precio: item.precio,
-               extrasIds: (item.extras || []).map(e => e.id).filter(id => id),
+                extrasIds: extrasIds,
                 extrasTotal: item.extrasTotal,
                 subtotal: item.subtotal,
                 notas: item.notas || ""
@@ -1338,7 +1348,7 @@ function filtrarClientesLocal() {
     clientesBuscados = termino === "" 
         ? todosLosClientes.slice() 
         : todosLosClientes.filter(c => {
-            const nombre = (c.nombre || "").toLowerCase();
+const nombre = (c.nombre || "").toLowerCase();
             const telefono = (c.telefono || "").toLowerCase();
             const correo = (c.correo || "").toLowerCase();
             return nombre.includes(termino) || telefono.includes(termino) || correo.includes(termino);
@@ -1623,15 +1633,41 @@ function renderPagos() {
     pagosActuales.forEach((pago, i) => {
         const icono = iconos[pago.metodoId] || iconos[pago.metodo] || "💰";
         const tieneMonto = pago.monto > 0;
+        const esEfectivo = pago.metodoId === "EFE" || pago.metodo === "Efectivo";
         
-        html += `<div class="metodo-card${tieneMonto ? ' tiene-monto' : ''}" onclick="enfocarInput(${i})">
+        html += `<div class="metodo-card${tieneMonto ? ' tiene-monto' : ''}" onclick="seleccionarMetodoPago(${i})">
             <div class="metodo-icono">${icono}</div>
             <div class="metodo-nombre">${pago.metodo}</div>
-            <input type="number" id="pagoInput${i}" class="metodo-input" value="${pago.monto || ''}" placeholder="0.00" oninput="actualizarMontoPago(${i}, this)" onclick="event.stopPropagation()">
+            <input type="number" id="pagoInput${i}" class="metodo-input" value="${pago.monto || ''}" 
+                placeholder="${esEfectivo ? 'Recibido' : '0.00'}" 
+                oninput="actualizarMontoPago(${i}, this)" 
+                onclick="event.stopPropagation()"
+                ${!esEfectivo && tieneMonto ? 'readonly' : ''}>
         </div>`;
     });
     
     document.getElementById("cobroMetodos").innerHTML = html;
+}
+
+function seleccionarMetodoPago(idx) {
+    const pago = pagosActuales[idx];
+    const esEfectivo = pago.metodoId === "EFE" || pago.metodo === "Efectivo";
+    
+    if (esEfectivo) {
+        enfocarInput(idx);
+    } else {
+        if (pago.monto > 0) {
+            pago.monto = 0;
+        } else {
+            const propina = parseFloat(document.getElementById("propinaInput").value) || 0;
+            const totalConProp = totalActual + propina;
+            const pagado = pagosActuales.reduce((sum, p, i) => i !== idx ? sum + p.monto : sum, 0);
+            const restante = totalConProp - pagado;
+            pago.monto = Math.max(0, restante);
+        }
+        renderPagos();
+        calcularTotalPagos();
+    }
 }
 
 function enfocarInput(idx) {
@@ -1733,16 +1769,20 @@ async function confirmarVenta() {
             mostrarToast("Error al cerrar cuenta", "error");
         }
     } else {
-     const productosEnviar = ticket.map(item => ({
-            productoId: item.productoId,
-            nombre: item.nombre,
-            cantidad: item.cantidad,
-            precio: item.precio,
-            extrasIds: (item.extras || []).map(e => e.id).filter(id => id),
-            extrasTotal: item.extrasTotal,
-            subtotal: item.subtotal,
-            notas: item.notas || ""
-        }));
+        // Venta rápida - enviar IDs de extras
+        const productosEnviar = ticket.map(item => {
+            const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(",");
+            return {
+                productoId: item.productoId,
+                nombre: item.nombre,
+                cantidad: item.cantidad,
+                precio: item.precio,
+                extrasIds: extrasIds,
+                extrasTotal: item.extrasTotal,
+                subtotal: item.subtotal,
+                notas: item.notas || ""
+            };
+        });
         
         try {
             const result = await registrarVentaPOS({
@@ -1753,7 +1793,8 @@ async function confirmarVenta() {
                 clienteId: clienteSeleccionado?.id || "",
                 nombreCliente: clienteSeleccionado?.nombre || "Mostrador",
                 telefono: clienteSeleccionado?.telefono || "",
-direccionId: direccionSeleccionada?.id || "",
+                direccionId: direccionSeleccionada?.id || "",
+                meseroId: meseroActual?.id || "",
                 costoEnvio: totales.envio,
                 cupon: cuponAplicado,
                 pagos: pagosEnviar,
