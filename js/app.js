@@ -1278,12 +1278,40 @@ function mostrarModalCuenta(cuenta) {
     cuentaModalActual = cuenta;
     
     const esMesa = cuenta.mesaId && cuenta.mesaId.length > 0;
+    const estaCerrada = cuenta.estado === "Cerrado";
     
     document.getElementById("cuentaIcono").textContent = esMesa ? "🍽️" : "🧾";
     document.getElementById("cuentaTitulo").textContent = cuenta.cliente || "Sin cliente";
     document.getElementById("cuentaFolioModal").textContent = cuenta.folio;
     document.getElementById("cuentaHoraModal").textContent = (cuenta.hora || "").substring(0, 5) || "--:--";
     document.getElementById("cuentaClienteModal").textContent = cuenta.cliente || "Mostrador";
+    
+    // Mostrar estado
+    const estadoInfo = document.getElementById("cuentaEstadoInfo");
+    if (estaCerrada) {
+        estadoInfo.textContent = "🔒 Cuenta Cerrada - Solo cobrar";
+        estadoInfo.className = "cuenta-estado-info cerrada";
+        estadoInfo.style.display = "block";
+    } else {
+        estadoInfo.textContent = "🔓 Cuenta Abierta";
+        estadoInfo.className = "cuenta-estado-info abierta";
+        estadoInfo.style.display = "block";
+    }
+    
+    // Mostrar/ocultar botones según estado
+    const btnAgregar = document.getElementById("btnAgregarMas");
+    const btnCerrar = document.getElementById("btnCerrarCuenta");
+    const btnReabrir = document.getElementById("btnReabrirCuenta");
+    
+    if (estaCerrada) {
+        btnAgregar.style.display = "none";
+        btnCerrar.style.display = "none";
+        btnReabrir.style.display = "flex";
+    } else {
+        btnAgregar.style.display = "flex";
+        btnCerrar.style.display = "flex";
+        btnReabrir.style.display = "none";
+    }
     
     let productosHtml = "";
     let totalItems = 0;
@@ -1951,3 +1979,69 @@ document.addEventListener("keydown", e => {
         });
     }
 });
+// ================================
+// CERRAR Y REABRIR CUENTAS
+// ================================
+async function cerrarCuentaSinCobrar() {
+    if (!cuentaModalActual) return;
+    
+    abrirModalConfirmar("¿Cerrar cuenta?", "La cuenta quedará cerrada pero sin cobrar", async () => {
+        try {
+            const result = await cerrarCuentaSinCobro(cuentaModalActual.folio);
+            if (result.success) {
+                mostrarToast("✓ Cuenta cerrada", "success");
+                cerrarModalCuenta();
+                cargarDatosCompletos();
+            } else {
+                mostrarToast(result.mensaje || "Error", "error");
+            }
+        } catch(e) {
+            mostrarToast("Error: " + e.message, "error");
+        }
+    });
+}
+
+function abrirModalReabrir() {
+    document.getElementById("pinReabrir").value = "";
+    document.getElementById("pinError").style.display = "none";
+    document.getElementById("modalReabrir").classList.add("show");
+    setTimeout(() => document.getElementById("pinReabrir").focus(), 100);
+}
+
+function cerrarModalReabrir() {
+    document.getElementById("modalReabrir").classList.remove("show");
+}
+
+function togglePinVisibility() {
+    const input = document.getElementById("pinReabrir");
+    input.type = input.type === "password" ? "text" : "password";
+}
+
+async function confirmarReabrir() {
+    const pin = document.getElementById("pinReabrir").value.trim();
+    
+    if (!pin) {
+        document.getElementById("pinError").textContent = "Ingresa tu PIN";
+        document.getElementById("pinError").style.display = "block";
+        return;
+    }
+    
+    if (!cuentaModalActual) return;
+    
+    try {
+        const result = await reabrirCuenta(cuentaModalActual.folio, pin);
+        
+        if (result.success) {
+            cerrarModalReabrir();
+            cerrarModalCuenta();
+            mostrarToast("✓ Cuenta reabierta por " + result.usuario, "success");
+            cargarDatosCompletos();
+        } else {
+            document.getElementById("pinError").textContent = result.mensaje;
+            document.getElementById("pinError").style.display = "block";
+        }
+    } catch(e) {
+        document.getElementById("pinError").textContent = "Error: " + e.message;
+        document.getElementById("pinError").style.display = "block";
+    }
+}
