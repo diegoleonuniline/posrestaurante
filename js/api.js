@@ -99,3 +99,6 @@ function obtenerCuentaPorFolio(folio) {
 function obtenerHistorialVentas(limite) {
     return apiGet(`/api/historial?limite=${limite || 50}`);
 }
+function registrarPedidoDomicilio(datos) {
+    return apiPost("/api/registrar-pedido-domicilio", datos);
+}
