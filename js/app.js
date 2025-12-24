@@ -1087,7 +1087,7 @@ async function guardarCuenta() {
                 nombre: item.nombre,
                 cantidad: item.cantidad,
                 precio: item.precio,
-                extras: (item.extras || []).map(e => e.nombre || e).join(", "),
+               extrasIds: (item.extras || []).map(e => e.id).filter(id => id),
                 extrasTotal: item.extrasTotal,
                 subtotal: item.subtotal,
                 notas: item.notas || ""
@@ -1733,12 +1733,12 @@ async function confirmarVenta() {
             mostrarToast("Error al cerrar cuenta", "error");
         }
     } else {
-        const productosEnviar = ticket.map(item => ({
+     const productosEnviar = ticket.map(item => ({
             productoId: item.productoId,
             nombre: item.nombre,
             cantidad: item.cantidad,
             precio: item.precio,
-            extras: item.extras,
+            extrasIds: (item.extras || []).map(e => e.id).filter(id => id),
             extrasTotal: item.extrasTotal,
             subtotal: item.subtotal,
             notas: item.notas || ""
@@ -1753,7 +1753,7 @@ async function confirmarVenta() {
                 clienteId: clienteSeleccionado?.id || "",
                 nombreCliente: clienteSeleccionado?.nombre || "Mostrador",
                 telefono: clienteSeleccionado?.telefono || "",
-                direccion: direccionSeleccionada?.direccion || "",
+direccionId: direccionSeleccionada?.id || "",
                 costoEnvio: totales.envio,
                 cupon: cuponAplicado,
                 pagos: pagosEnviar,
