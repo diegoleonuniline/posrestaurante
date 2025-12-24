@@ -191,13 +191,12 @@
                 <div class="total-row total"><span>TOTAL</span><span id="ticketTotal">$0.00</span></div>
             </div>
             
-            <div class="ticket-actions">
-                <button class="btn-cancelar" onclick="cancelarTicket()"><span>✕</span> Cancelar</button>
-                <button class="btn-guardar" id="btnGuardar" onclick="guardarCuenta()" style="display:none;"><span>💾</span> Guardar</button>
-                <button class="btn-cobrar" id="btnCobrar" onclick="abrirCobro()" disabled><span>💵</span> Cobrar</button>
-            </div>
-        </div>
-    </div>
+         <div class="ticket-actions">
+    <button class="btn-cancelar" onclick="cancelarTicket()"><span>✕</span> Cancelar</button>
+    <button class="btn-guardar" id="btnGuardar" onclick="guardarCuenta()" style="display:none;"><span>💾</span> Guardar</button>
+    <button class="btn-cerrar-ticket" id="btnCerrarTicket" onclick="cerrarCuentaDesdeTicket()" style="display:none;"><span>🔒</span> Cerrar</button>
+    <button class="btn-cobrar" id="btnCobrar" onclick="abrirCobro()" disabled><span>💵</span> Cobrar</button>
+</div>
     
     <!-- MODALES -->
     
