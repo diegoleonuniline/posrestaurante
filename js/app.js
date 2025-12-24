@@ -993,31 +993,36 @@ async function cargarCuentaConFallback(folio, mesa) {
 }
 
 async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
- const folioNuevo = "TEMP-" + Date.now();
-    
-    cuentaActual = {
-        folio: folioNuevo,
-        mesaId: mesa.id,
-        mesaNumero: mesa.numero,
-        meseroId,
-        meseroNombre,
-        productos: []
-    };
-    
-    if (meseroId) meseroActual = { id: meseroId, nombre: meseroNombre };
-    
-    ticket = [];
+    // NO generar folio aquí, esperar respuesta del backend
     mostrarInterfazMesa(mesa);
-    document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - " + folioNuevo;
+    document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - Abriendo...";
     renderTicket();
     cambiarTab("productos", document.querySelector('[data-tab="productos"]'));
-    mostrarToast("Mesa " + mesa.numero + " abierta", "success");
+    mostrarToast("Abriendo mesa " + mesa.numero + "...", "");
     
-    // Enviar a AppSheet en background
     try {
-        await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "", folioNuevo);
+        const result = await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "", "");
+        
+        if (result && result.folio) {
+            // USAR EL FOLIO QUE DEVOLVIÓ EL BACKEND
+            cuentaActual = {
+                folio: result.folio,
+                mesaId: mesa.id,
+                mesaNumero: mesa.numero,
+                meseroId,
+                meseroNombre,
+                productos: []
+            };
+            
+            if (meseroId) meseroActual = { id: meseroId, nombre: meseroNombre };
+            ticket = [];
+            
+            document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - " + result.folio;
+            mostrarToast("Mesa " + mesa.numero + " abierta: " + result.folio, "success");
+        }
     } catch(e) {
-        console.error("Error al crear cuenta en servidor:", e);
+        console.error("Error al abrir cuenta:", e);
+        mostrarToast("Error al abrir mesa", "error");
     }
 }
 
