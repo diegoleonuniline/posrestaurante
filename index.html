@@ -319,13 +319,16 @@
                 <div class="cuenta-productos-header"><span>Productos</span><span id="cuentaCantidadItems">0 items</span></div>
                 <div class="cuenta-productos-lista" id="cuentaProductosLista"></div>
             </div>
-            <div class="modal-cuenta-footer">
-                <div class="cuenta-total-grande"><span>Total</span><span id="cuentaTotalModal">$0.00</span></div>
-                <div class="cuenta-acciones">
-                    <button class="btn-cuenta-agregar" onclick="agregarMasCuenta()">➕ Agregar</button>
-                    <button class="btn-cuenta-cobrar" onclick="cobrarCuentaModal()">💵 Cobrar</button>
-                </div>
-            </div>
+<div class="modal-cuenta-footer">
+    <div class="cuenta-total-grande"><span>Total</span><span id="cuentaTotalModal">$0.00</span></div>
+    <div class="cuenta-estado-info" id="cuentaEstadoInfo"></div>
+    <div class="cuenta-acciones" id="cuentaAcciones">
+        <button class="btn-cuenta-agregar" id="btnAgregarMas" onclick="agregarMasCuenta()">➕ Agregar</button>
+        <button class="btn-cuenta-cerrar" id="btnCerrarCuenta" onclick="cerrarCuentaSinCobrar()">🔒 Cerrar</button>
+        <button class="btn-cuenta-reabrir" id="btnReabrirCuenta" onclick="abrirModalReabrir()" style="display:none;">🔓 Reabrir</button>
+        <button class="btn-cuenta-cobrar" onclick="cobrarCuentaModal()">💵 Cobrar</button>
+    </div>
+</div>
         </div>
     </div>
     
@@ -353,6 +356,28 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Reabrir Cuenta -->
+<div class="modal-overlay" id="modalReabrir">
+    <div class="modal-reabrir">
+        <div class="modal-reabrir-header">
+            <h3>🔓 Reabrir Cuenta</h3>
+            <button class="modal-close" onclick="cerrarModalReabrir()">✕</button>
+        </div>
+        <div class="modal-reabrir-body">
+            <p>Ingresa tu PIN de acceso para reabrir esta cuenta</p>
+            <div class="pin-input-container">
+                <input type="password" id="pinReabrir" placeholder="••••" maxlength="6" class="pin-input">
+                <button type="button" class="pin-toggle" onclick="togglePinVisibility()">👁️</button>
+            </div>
+            <div class="pin-error" id="pinError" style="display:none;"></div>
+        </div>
+        <div class="modal-reabrir-footer">
+            <button class="btn-secundario" onclick="cerrarModalReabrir()">Cancelar</button>
+            <button class="btn-primario" onclick="confirmarReabrir()">Confirmar</button>
+        </div>
+    </div>
+</div>
     
     <!-- Toast -->
     <div class="toast" id="toast"></div>
