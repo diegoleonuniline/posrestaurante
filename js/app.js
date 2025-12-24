@@ -1090,7 +1090,7 @@ async function guardarCuenta() {
     ticket.forEach(item => {
         if (item.esNuevo && item.pendienteSync) {
             // Enviar IDs de extras separados por coma
-            const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(",");
+            const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
             
             nuevos.push({
                 productoId: item.productoId,
