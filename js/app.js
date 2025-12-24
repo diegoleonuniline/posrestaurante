@@ -1082,8 +1082,19 @@ function seleccionarMesero(meseroId, meseroNombre) {
 // GUARDAR CUENTA
 // ================================
 async function guardarCuenta() {
-    if (!cuentaActual || ticket.length === 0) {
+    if (ticket.length === 0) {
         mostrarToast("Sin productos para guardar", "");
+        return;
+    }
+    
+    // Si es domicilio sin cuenta abierta, crear una nueva
+    if (!cuentaActual && tipoServicio === "Domicilio") {
+        await guardarPedidoDomicilio();
+        return;
+    }
+    
+    if (!cuentaActual) {
+        mostrarToast("Sin cuenta activa", "");
         return;
     }
     
@@ -1092,7 +1103,6 @@ async function guardarCuenta() {
     
     ticket.forEach(item => {
         if (item.esNuevo && item.pendienteSync) {
-            // Enviar IDs de extras separados por coma
             const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
             
             nuevos.push({
@@ -1155,6 +1165,65 @@ async function guardarCuenta() {
         cargarDatosCompletos();
     } catch(e) {
         mostrarToast("Error al guardar", "error");
+    }
+}
+
+async function guardarPedidoDomicilio() {
+    if (!clienteSeleccionado) {
+        mostrarToast("Selecciona un cliente", "error");
+        abrirModalCliente();
+        return;
+    }
+    
+    if (!direccionSeleccionada) {
+        mostrarToast("Selecciona una dirección", "error");
+        abrirModalDirecciones();
+        return;
+    }
+    
+    mostrarToast("Guardando pedido...", "");
+    
+    const totales = calcularTotalesLocal();
+    
+    const productosEnviar = ticket.map(item => {
+        const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
+        return {
+            productoId: item.productoId,
+            nombre: item.nombre,
+            cantidad: item.cantidad,
+            precio: item.precio,
+            extrasIds: extrasIds,
+            extrasTotal: item.extrasTotal,
+            subtotal: item.subtotal,
+            notas: item.notas || ""
+        };
+    });
+    
+    try {
+        const result = await registrarPedidoDomicilio({
+            productos: productosEnviar,
+            total: totales.total,
+            tipoServicio: "Domicilio",
+            observaciones: document.getElementById("ticketNotas").value.trim(),
+            clienteId: clienteSeleccionado?.id || "",
+            nombreCliente: clienteSeleccionado?.nombre || "",
+            telefono: clienteSeleccionado?.telefono || "",
+            direccionId: direccionSeleccionada?.id || "",
+            costoEnvio: totales.envio,
+            cupon: cuponAplicado,
+            usuarioId: usuarioLogueado?.id || ""
+        });
+        
+        if (result && result.success) {
+            mostrarToast("✓ Pedido guardado: " + result.folio, "success");
+            resetearVenta();
+            cargarEstadisticas();
+            cargarDatosCompletos();
+        } else {
+            mostrarToast(result.mensaje || "Error al guardar", "error");
+        }
+    } catch(e) {
+        mostrarToast("Error: " + e.message, "error");
     }
 }
 
