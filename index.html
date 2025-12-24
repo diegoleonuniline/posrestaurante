@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Punto de Venta</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- LOGIN -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-card">
+            <div class="login-header">
+                <div class="login-logo">🍽️</div>
+                <h1>Punto de Venta</h1>
+                <p>Ingresa tus credenciales</p>
+            </div>
+            <div class="login-body">
+                <div class="login-error" id="loginError" style="display:none;"></div>
+                <div class="login-field">
+                    <label>Correo</label>
+                    <input type="email" id="loginCorreo" placeholder="tu@correo.com">
+                </div>
+                <div class="login-field">
+                    <label>Contraseña</label>
+                    <input type="password" id="loginContrasena" placeholder="••••••••">
+                </div>
+                <button class="login-btn" id="btnLogin" onclick="intentarLogin()">Ingresar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POS CONTAINER -->
+    <div class="pos-container" id="posContainer" style="display:none;">
+        
+        <!-- PANEL IZQUIERDO -->
+        <div class="pos-left">
+            <header class="pos-header">
+                <div class="pos-brand">
+                    <span class="pos-logo">🍽️</span>
+                    <div class="pos-brand-info">
+                        <span class="pos-title">Punto de Venta</span>
+                        <span class="pos-date" id="posDate">--</span>
+                    </div>
+                </div>
+                <div class="pos-stats">
+                    <div class="pos-stat">
+                        <span class="pos-stat-icon">🧾</span>
+                        <div class="pos-stat-info">
+                            <span class="pos-stat-value" id="statVentas">0</span>
+                            <span class="pos-stat-label">Ventas</span>
+                        </div>
+                    </div>
+                    <div class="pos-stat highlight">
+                        <span class="pos-stat-icon">💰</span>
+                        <div class="pos-stat-info">
+                            <span class="pos-stat-value" id="statTotal">$0</span>
+                            <span class="pos-stat-label">Hoy</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="pos-usuario">
+                    <div class="usuario-info">
+                        <span class="usuario-nombre" id="usuarioNombre">Usuario</span>
+                        <span class="usuario-rol" id="usuarioRol">Cajero</span>
+                    </div>
+                    <button class="btn-logout" onclick="cerrarSesion()" title="Cerrar sesión">🚪</button>
+                </div>
+                <button class="btn-sync" onclick="sincronizarTodo()" title="Sincronizar datos">🔄</button>
+            </header>
+            
+            <div class="pos-tabs">
+                <button class="pos-tab active" data-tab="mesas" onclick="cambiarTab('mesas', this)">🍽️ Mesas</button>
+                <button class="pos-tab" data-tab="cuentas" onclick="cambiarTab('cuentas', this)">📋 Cuentas</button>
+                <button class="pos-tab" data-tab="productos" onclick="cambiarTab('productos', this)">🛒 Venta Rápida</button>
+            </div>
+            
+            <!-- TAB MESAS -->
+            <div class="pos-tab-content active" id="tabMesas">
+                <div class="mesas-header">
+                    <div class="mesas-filtros">
+                        <button class="filtro-mesa active" data-filtro="todas" onclick="filtrarMesas('todas', this)">Todas</button>
+                        <button class="filtro-mesa" data-filtro="disponibles" onclick="filtrarMesas('disponibles', this)">Disponibles</button>
+                        <button class="filtro-mesa" data-filtro="ocupadas" onclick="filtrarMesas('ocupadas', this)">Ocupadas</button>
+                    </div>
+                    <div class="mesas-leyenda">
+                        <span class="leyenda-item"><span class="dot disponible"></span> Disponible</span>
+                        <span class="leyenda-item"><span class="dot ocupada"></span> Ocupada</span>
+                    </div>
+                </div>
+                <div class="mesas-grid" id="mesasGrid">
+                    <div class="pos-loading"><div class="spinner"></div><p>Cargando mesas...</p></div>
+                </div>
+            </div>
+            
+            <!-- TAB CUENTAS -->
+            <div class="pos-tab-content" id="tabCuentas">
+                <div class="cuentas-header">
+                    <h3>📋 Cuentas Abiertas</h3>
+                    <button class="btn-refresh" onclick="cargarCuentasAbiertas()">🔄 Actualizar</button>
+                </div>
+                <div class="cuentas-lista" id="cuentasLista">
+                    <div class="pos-loading"><div class="spinner"></div><p>Cargando cuentas...</p></div>
+                </div>
+            </div>
+            
+            <!-- TAB PRODUCTOS -->
+            <div class="pos-tab-content" id="tabProductos">
+                <div class="pos-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Buscar producto..." oninput="buscarProducto()">
+                    <button class="search-clear" id="searchClear" onclick="limpiarBusqueda()">✕</button>
+                </div>
+                <div class="pos-categories" id="categoriesContainer">
+                    <button class="pos-cat active" data-cat="all" onclick="filtrarCategoria('all', this)"><span>📋</span> Todos</button>
+                </div>
+                <div class="pos-products" id="productsContainer">
+                    <div class="pos-loading"><div class="spinner"></div><p>Cargando productos...</p></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- PANEL DERECHO - TICKET -->
+        <div class="pos-right">
+            <div class="ticket-header">
+                <div class="ticket-title">
+                    <span>🧾</span>
+                    <h2 id="ticketTitulo">Ticket de Venta</h2>
+                </div>
+                <div class="ticket-mesa-info" id="ticketMesaInfo" style="display:none;">
+                    <span class="mesa-badge" id="mesaBadge">Mesa 1</span>
+                    <button class="btn-cambiar-mesa" onclick="liberarMesa()">✕</button>
+                </div>
+                <div class="ticket-tipo" id="ticketTipoContainer">
+                    <button class="tipo-btn active" data-tipo="Local" onclick="setTipoServicio('Local', this)">🍽️ Local</button>
+                    <button class="tipo-btn" data-tipo="Recoger" onclick="setTipoServicio('Recoger', this)">📦 Llevar</button>
+                    <button class="tipo-btn" data-tipo="Domicilio" onclick="setTipoServicio('Domicilio', this)">🛵 Domicilio</button>
+                </div>
+            </div>
+            
+            <div class="ticket-cliente" id="ticketCliente">
+                <button class="btn-cliente" onclick="abrirModalCliente()">
+                    <span class="cliente-icon">👤</span>
+                    <span class="cliente-text" id="clienteText">Seleccionar cliente</span>
+                    <span class="cliente-arrow">›</span>
+                </button>
+            </div>
+            
+            <div class="ticket-direccion" id="ticketDireccion" style="display:none;">
+                <button class="btn-direccion" onclick="abrirModalDirecciones()">
+                    <span class="direccion-icon">📍</span>
+                    <span class="direccion-text" id="direccionText">Seleccionar dirección</span>
+                    <span class="direccion-arrow">›</span>
+                </button>
+                <div class="costo-envio" id="costoEnvioSection">
+                    <label>Costo envío:</label>
+                    <input type="number" id="costoEnvioInput" value="0" min="0" oninput="renderTicket()">
+                </div>
+            </div>
+            
+            <div class="ticket-body" id="ticketBody">
+                <div class="ticket-empty" id="ticketEmpty">
+                    <div class="empty-icon">🛒</div>
+                    <p>Agrega productos al ticket</p>
+                    <span>Selecciona una mesa o agrega productos</span>
+                </div>
+                <div class="ticket-items" id="ticketItems"></div>
+            </div>
+            
+            <div class="ticket-cupon" id="ticketCupon">
+                <div class="cupon-input" id="cuponInputSection">
+                    <input type="text" id="cuponCodigo" placeholder="Código de cupón">
+                    <button onclick="aplicarCuponInput()">Aplicar</button>
+                </div>
+                <div class="cupon-aplicado" id="cuponAplicadoSection" style="display:none;">
+                    <span class="cupon-tag">🏷️ <span id="cuponNombre"></span> (-<span id="cuponPorcentaje"></span>%)</span>
+                    <button class="cupon-remove" onclick="quitarCupon()">✕</button>
+                </div>
+            </div>
+            
+            <div class="ticket-notas">
+                <input type="text" id="ticketNotas" placeholder="📝 Notas del pedido (opcional)">
+            </div>
+            
+            <div class="ticket-totales">
+                <div class="total-row"><span>Subtotal</span><span id="ticketSubtotal">$0.00</span></div>
+                <div class="total-row" id="envioRow" style="display:none;"><span>Envío</span><span id="ticketEnvio">$0.00</span></div>
+                <div class="total-row" id="descuentoRow" style="display:none;"><span>Descuento</span><span class="descuento" id="ticketDescuento">-$0.00</span></div>
+                <div class="total-row total"><span>TOTAL</span><span id="ticketTotal">$0.00</span></div>
+            </div>
+            
+            <div class="ticket-actions">
+                <button class="btn-cancelar" onclick="cancelarTicket()"><span>✕</span> Cancelar</button>
+                <button class="btn-guardar" id="btnGuardar" onclick="guardarCuenta()" style="display:none;"><span>💾</span> Guardar</button>
+                <button class="btn-cobrar" id="btnCobrar" onclick="abrirCobro()" disabled><span>💵</span> Cobrar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- MODALES -->
+    
+    <!-- Modal Extras -->
+    <div class="modal-overlay" id="modalExtras">
+        <div class="modal-extras">
+            <div class="modal-extras-header">
+                <h3 id="extrasProductoNombre">Producto</h3>
+                <button class="modal-close" onclick="cerrarExtras()">✕</button>
+            </div>
+            <div class="modal-extras-body">
+                <div class="extras-precio-base"><span>Precio base:</span><span id="extrasPrecioBase">$0.00</span></div>
+                <div class="extras-lista" id="extrasLista"></div>
+                <div class="extras-notas">
+                    <label>Notas especiales</label>
+                    <input type="text" id="extrasNotas" placeholder="Ej: Sin cebolla...">
+                </div>
+            </div>
+            <div class="modal-extras-footer">
+                <div class="extras-cantidad">
+                    <button onclick="cambiarCantidadExtra(-1)">−</button>
+                    <span id="extrasCantidad">1</span>
+                    <button onclick="cambiarCantidadExtra(1)">+</button>
+                </div>
+                <button class="btn-agregar-extra" onclick="confirmarAgregarProducto()">Agregar <span id="extrasTotal">$0.00</span></button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Cliente -->
+    <div class="modal-overlay" id="modalCliente">
+        <div class="modal-cliente">
+            <div class="modal-cliente-header"><h3>👤 Cliente</h3><button class="modal-close" onclick="cerrarModalCliente()">✕</button></div>
+            <div class="modal-cliente-body">
+                <div class="cliente-busqueda"><input type="text" id="buscarClienteInput" placeholder="Buscar..." oninput="filtrarClientesLocal()"></div>
+                <div class="cliente-resultados" id="clienteResultados"></div>
+                <div class="cliente-nuevo" id="clienteNuevoForm" style="display:none;">
+                    <h4>Nuevo Cliente</h4>
+                    <div class="form-group"><label>Nombre *</label><input type="text" id="nuevoClienteNombre"></div>
+                    <div class="form-group"><label>Teléfono *</label><input type="tel" id="nuevoClienteTelefono"></div>
+                    <div class="form-group"><label>Correo</label><input type="email" id="nuevoClienteCorreo"></div>
+                    <div class="form-group"><label>Dirección</label><input type="text" id="nuevoClienteDireccion"></div>
+                    <div class="form-buttons">
+                        <button class="btn-secundario" onclick="toggleNuevoCliente(false)">Cancelar</button>
+                        <button class="btn-primario" onclick="guardarNuevoCliente()">Guardar</button>
+                    </div>
+                </div>
+                <button class="btn-nuevo-cliente" id="btnNuevoCliente" onclick="toggleNuevoCliente(true)">➕ Nuevo Cliente</button>
+            </div>
+            <div class="modal-cliente-footer"><button class="btn-sin-cliente" onclick="seleccionarSinCliente()">Continuar sin cliente</button></div>
+        </div>
+    </div>
+    
+    <!-- Modal Direcciones -->
+    <div class="modal-overlay" id="modalDirecciones">
+        <div class="modal-direcciones">
+            <div class="modal-direcciones-header"><h3>📍 Direcciones de <span id="direccionesClienteNombre">Cliente</span></h3><button class="modal-close" onclick="cerrarModalDirecciones()">✕</button></div>
+            <div class="modal-direcciones-body">
+                <div class="direcciones-lista" id="direccionesLista"></div>
+                <div class="direccion-nueva" id="direccionNuevaForm" style="display:none;">
+                    <h4>Nueva Dirección</h4>
+                    <div class="form-group"><label>Dirección *</label><textarea id="nuevaDireccionTexto" rows="3"></textarea></div>
+                    <div class="form-group"><label>Link Maps</label><input type="text" id="nuevaDireccionMaps"></div>
+                    <div class="form-buttons">
+                        <button class="btn-secundario" onclick="toggleNuevaDireccion(false)">Cancelar</button>
+                        <button class="btn-primario" onclick="guardarNuevaDireccion()">Guardar</button>
+                    </div>
+                </div>
+                <button class="btn-nueva-direccion" id="btnNuevaDireccion" onclick="toggleNuevaDireccion(true)">➕ Nueva Dirección</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Cobro -->
+    <div class="modal-overlay" id="modalCobro">
+        <div class="modal-cobro-nuevo">
+            <div class="cobro-header"><span>Cobrar</span><button class="cobro-close" onclick="cerrarCobro()">✕</button></div>
+            <div class="cobro-total-section"><span class="cobro-label">Total a Pagar</span><span class="cobro-total-grande" id="cobroTotal">$0.00</span></div>
+            <div class="cobro-metodos" id="cobroMetodos"></div>
+            <div class="cobro-propina"><span>Propina</span><input type="number" id="propinaInput" value="0" oninput="calcularTotalPagos()"></div>
+            <div class="cobro-resumen">
+                <div class="cobro-resumen-row"><span>Total:</span><span id="resumenSubtotal">$0.00</span></div>
+                <div class="cobro-resumen-row"><span>Pagado:</span><span class="pagado-valor" id="resumenPagado">$0.00</span></div>
+                <div class="cobro-resumen-row restante" id="resumenRestanteRow"><span>Faltan:</span><span id="resumenRestante">$0.00</span></div>
+                <div class="cobro-cambio" id="resumenCambioRow" style="display:none;"><span>Cambio</span><span class="cambio-valor" id="resumenCambio">$0.00</span></div>
+            </div>
+            <button class="btn-confirmar-venta" id="btnConfirmarCobro" onclick="confirmarVenta()" disabled>✓ Confirmar Venta</button>
+        </div>
+    </div>
+    
+    <!-- Modal Éxito -->
+    <div class="modal-overlay" id="modalExito">
+        <div class="modal-exito">
+            <div class="exito-icon">✅</div>
+            <h2>¡Venta Completada!</h2>
+            <div class="exito-folio" id="exitoFolio">PED00001</div>
+            <div class="exito-info">
+                <div class="exito-row"><span>Total:</span><span id="exitoTotal">$0.00</span></div>
+                <div class="exito-row" id="exitoCambioRow"><span>Cambio:</span><span id="exitoCambio">$0.00</span></div>
+                <div class="exito-row"><span>Pagos:</span><span id="exitoMetodos"></span></div>
+            </div>
+            <div class="exito-actions">
+                <button class="btn-imprimir" onclick="imprimirTicket()">🖨️ Imprimir</button>
+                <button class="btn-nueva-venta" onclick="nuevaVenta()">➕ Nueva Venta</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Cuenta Abierta -->
+    <div class="modal-overlay" id="modalCuentaAbierta">
+        <div class="modal-cuenta-abierta">
+            <div class="modal-cuenta-header">
+                <div class="modal-cuenta-titulo"><span id="cuentaIcono">🍽️</span><div><h3 id="cuentaTitulo">Mesa 1</h3><span class="cuenta-folio" id="cuentaFolioModal">PED00001</span></div></div>
+                <button class="modal-close" onclick="cerrarModalCuenta()">✕</button>
+            </div>
+            <div class="modal-cuenta-body">
+                <div class="cuenta-info-row"><span>🕐 Abierta desde:</span><span id="cuentaHoraModal">12:30</span></div>
+                <div class="cuenta-info-row"><span>👤 Cliente:</span><span id="cuentaClienteModal">Mesa 1</span></div>
+                <div class="cuenta-productos-header"><span>Productos</span><span id="cuentaCantidadItems">0 items</span></div>
+                <div class="cuenta-productos-lista" id="cuentaProductosLista"></div>
+            </div>
+            <div class="modal-cuenta-footer">
+                <div class="cuenta-total-grande"><span>Total</span><span id="cuentaTotalModal">$0.00</span></div>
+                <div class="cuenta-acciones">
+                    <button class="btn-cuenta-agregar" onclick="agregarMasCuenta()">➕ Agregar</button>
+                    <button class="btn-cuenta-cobrar" onclick="cobrarCuentaModal()">💵 Cobrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Mesero -->
+    <div class="modal-overlay" id="modalMesero">
+        <div class="modal-mesero">
+            <div class="modal-mesero-header"><h3>👤 Seleccionar Mesero</h3><button class="modal-close" onclick="cerrarModalMesero()">✕</button></div>
+            <div class="modal-mesero-body">
+                <p class="mesero-mesa-titulo" id="meseroMesaTitulo">Mesa 1</p>
+                <div class="mesero-lista" id="meseroLista"></div>
+            </div>
+            <div class="modal-mesero-footer"><button class="btn-secundario" onclick="cerrarModalMesero()">Cancelar</button></div>
+        </div>
+    </div>
+    
+    <!-- Modal Confirmar -->
+    <div class="modal-overlay" id="modalConfirmar">
+        <div class="modal-confirmar">
+            <div class="modal-confirmar-icon">⚠️</div>
+            <h3 id="confirmarTitulo">¿Estás seguro?</h3>
+            <p id="confirmarMensaje">Esta acción no se puede deshacer</p>
+            <div class="modal-confirmar-buttons">
+                <button class="btn-confirmar-cancelar" onclick="cerrarModalConfirmar()">Cancelar</button>
+                <button class="btn-confirmar-aceptar" onclick="ejecutarConfirmar()">Sí, continuar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
