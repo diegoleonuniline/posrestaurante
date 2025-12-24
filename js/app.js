@@ -592,12 +592,15 @@ function setTipoServicio(tipo, btn) {
     });
     
     const direccionSection = document.getElementById("ticketDireccion");
+    const btnGuardar = document.getElementById("btnGuardar");
     
     if (tipo === "Domicilio") {
         direccionSection.style.display = "block";
+        btnGuardar.style.display = "flex";
         if (!clienteSeleccionado) abrirModalCliente();
     } else {
         direccionSection.style.display = "none";
+        btnGuardar.style.display = "none";
         direccionSeleccionada = null;
         costoEnvio = 0;
         document.getElementById("costoEnvioInput").value = 0;
@@ -1771,7 +1774,7 @@ async function confirmarVenta() {
     } else {
         // Venta rápida - enviar IDs de extras
         const productosEnviar = ticket.map(item => {
-            const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(",");
+            const extrasIds = (item.extras || []).map(e => e.id).filter(id => id).join(" , ");
             return {
                 productoId: item.productoId,
                 nombre: item.nombre,
