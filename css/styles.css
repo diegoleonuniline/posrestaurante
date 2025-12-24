@@ -1667,3 +1667,21 @@ body {
     border-top: 1px solid var(--gray-200);
 }
 .modal-reabrir-footer button { flex: 1; }
+.btn-cerrar-ticket {
+    flex: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 14px 8px;
+    background: var(--gray-500);
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    color: white;
+    transition: all 0.2s;
+}
+.btn-cerrar-ticket:hover { background: var(--gray-600); }
