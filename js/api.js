@@ -102,3 +102,10 @@ function obtenerHistorialVentas(limite) {
 function registrarPedidoDomicilio(datos) {
     return apiPost("/api/registrar-pedido-domicilio", datos);
 }
+function cerrarCuentaSinCobro(folio) {
+    return apiPost("/api/cerrar-cuenta-sin-cobro", { folio });
+}
+
+function reabrirCuenta(folio, pin) {
+    return apiPost("/api/reabrir-cuenta", { folio, pin });
+}
