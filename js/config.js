@@ -1,7 +1,8 @@
+// config.js - REEMPLAZAR COMPLETAMENTE
 // ================================
 // CONFIGURACIÓN
 // ================================
-const API_URL = "https://posrestauranteback-9bd9638e87ad.herokuapp.com";
+const API_URL = "https://posresrauranteback-51e5a7bbcef4.herokuapp.com";
 
 // Cache config
 const CACHE_KEYS = {
