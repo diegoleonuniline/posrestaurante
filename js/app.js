@@ -868,8 +868,17 @@ async function seleccionarMesa(mesaId) {
     mesaSeleccionada = mesa;
     
     if (mesa.estado === "Ocupada" && mesa.folio) {
-        if (mesa.cuenta) {
-            aplicarCuentaInstantanea(mesa.cuenta, mesa);
+        // Verificar si la cuenta está cerrada
+        const cuenta = mesa.cuenta || cuentasCompletas[mesa.folio];
+        
+        if (cuenta && cuenta.estado === "Cerrado") {
+            // Mostrar modal de cuenta cerrada para pedir PIN
+            mostrarModalCuenta(cuenta);
+            return;
+        }
+        
+        if (cuenta) {
+            aplicarCuentaInstantanea(cuenta, mesa);
         } else if (cuentasCompletas[mesa.folio]) {
             aplicarCuentaInstantanea(cuentasCompletas[mesa.folio], mesa);
         } else {
@@ -988,15 +997,29 @@ async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
     mostrarInterfazMesa(mesa);
     renderTicket();
     cambiarTab("productos", document.querySelector('[data-tab="productos"]'));
-    mostrarToast("Mesa " + mesa.numero + " abierta", "success");
+    
+    // Deshabilitar cobrar mientras se crea
+    document.getElementById("btnCobrar").disabled = true;
+    document.getElementById("btnCobrar").textContent = "⏳ Creando...";
+    
+    mostrarToast("Abriendo mesa " + mesa.numero + "...", "");
     
     try {
         const result = await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "");
         if (result && result.success) {
             cuentaActual.folio = result.folio;
             document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - " + result.folio;
+            mostrarToast("✓ Mesa " + mesa.numero + " lista", "success");
+        } else {
+            mostrarToast("Error al abrir mesa", "error");
         }
-    } catch(e) {}
+    } catch(e) {
+        mostrarToast("Error: " + e.message, "error");
+    }
+    
+    // Rehabilitar botón cobrar
+    document.getElementById("btnCobrar").disabled = ticket.length === 0;
+    document.getElementById("btnCobrar").innerHTML = "<span>💵</span> Cobrar";
 }
 
 function mostrarInterfazMesa(mesa) {
@@ -1698,6 +1721,12 @@ function quitarCupon() {
 // ================================
 function abrirCobro() {
     if (ticket.length === 0) return;
+    
+    // Si hay cuenta de mesa con folio temporal, no dejar cobrar aún
+    if (cuentaActual && cuentaActual.folio && cuentaActual.folio.startsWith("NUEVA-")) {
+        mostrarToast("Espera, guardando cuenta...", "");
+        return;
+    }
     
     if (tipoServicio === "Domicilio") {
         if (!clienteSeleccionado) {
