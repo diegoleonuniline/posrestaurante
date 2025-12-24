@@ -35,6 +35,19 @@ let cantidadExtra = 1;
 
 let cambiosPendientes = { editados: [], cancelados: [], nuevos: [] };
 
+// Generar folio único
+function generarFolioUnico() {
+    const now = new Date();
+    const año = String(now.getFullYear()).slice(-2);
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const dia = String(now.getDate()).padStart(2, '0');
+    const hora = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const seg = String(now.getSeconds()).padStart(2, '0');
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    
+    return `PED${año}${mes}${dia}${hora}${min}${seg}${random}`;
+}
 // ================================
 // CACHE LOCAL
 // ================================
@@ -980,10 +993,10 @@ async function cargarCuentaConFallback(folio, mesa) {
 }
 
 async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
-    const folioTemporal = "NUEVA-" + Date.now().toString().substr(-6);
+    const folioNuevo = generarFolioUnico();
     
     cuentaActual = {
-        folio: folioTemporal,
+        folio: folioNuevo,
         mesaId: mesa.id,
         mesaNumero: mesa.numero,
         meseroId,
@@ -995,31 +1008,17 @@ async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
     
     ticket = [];
     mostrarInterfazMesa(mesa);
+    document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - " + folioNuevo;
     renderTicket();
     cambiarTab("productos", document.querySelector('[data-tab="productos"]'));
+    mostrarToast("Mesa " + mesa.numero + " abierta", "success");
     
-    // Deshabilitar cobrar mientras se crea
-    document.getElementById("btnCobrar").disabled = true;
-    document.getElementById("btnCobrar").textContent = "⏳ Creando...";
-    
-    mostrarToast("Abriendo mesa " + mesa.numero + "...", "");
-    
+    // Enviar a AppSheet en background
     try {
-        const result = await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "");
-        if (result && result.success) {
-            cuentaActual.folio = result.folio;
-            document.getElementById("mesaBadge").textContent = "🍽️ Mesa " + mesa.numero + " - " + result.folio;
-            mostrarToast("✓ Mesa " + mesa.numero + " lista", "success");
-        } else {
-            mostrarToast("Error al abrir mesa", "error");
-        }
+        await abrirCuentaMesa(mesa.id, meseroId || "", usuarioLogueado?.id || "", folioNuevo);
     } catch(e) {
-        mostrarToast("Error: " + e.message, "error");
+        console.error("Error al crear cuenta en servidor:", e);
     }
-    
-    // Rehabilitar botón cobrar
-    document.getElementById("btnCobrar").disabled = ticket.length === 0;
-    document.getElementById("btnCobrar").innerHTML = "<span>💵</span> Cobrar";
 }
 
 function mostrarInterfazMesa(mesa) {
@@ -1721,12 +1720,6 @@ function quitarCupon() {
 // ================================
 function abrirCobro() {
     if (ticket.length === 0) return;
-    
-    // Si hay cuenta de mesa con folio temporal, no dejar cobrar aún
-    if (cuentaActual && cuentaActual.folio && cuentaActual.folio.startsWith("NUEVA-")) {
-        mostrarToast("Espera, guardando cuenta...", "");
-        return;
-    }
     
     if (tipoServicio === "Domicilio") {
         if (!clienteSeleccionado) {
