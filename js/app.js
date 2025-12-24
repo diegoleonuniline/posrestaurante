@@ -993,7 +993,7 @@ async function cargarCuentaConFallback(folio, mesa) {
 }
 
 async function abrirMesaOptimista(mesa, meseroId, meseroNombre) {
-    const folioNuevo = generarFolioUnico();
+ const folioNuevo = "TEMP-" + Date.now();
     
     cuentaActual = {
         folio: folioNuevo,
