@@ -1687,3 +1687,49 @@ body {
     transition: all 0.2s;
 }
 .btn-cerrar-ticket:hover { background: var(--gray-600); }
+
+/* LOGOS */
+.login-logo img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.pos-logo img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+}
+
+.ticket-icon img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+
+/* MARCA DE AGUA EN MESAS */
+.mesas-grid {
+    position: relative;
+}
+
+.mesas-grid::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    height: 400px;
+    background-image: url('https://res.cloudinary.com/dstcnsu6a/image/upload/v1766606631/svgviewer-png-output_3_skz7nm.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.08;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.mesa-card {
+    position: relative;
+    z-index: 1;
+}
